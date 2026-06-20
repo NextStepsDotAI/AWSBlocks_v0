@@ -64,7 +64,7 @@ This project is a **demonstration and awareness showcase** of [AWS Blocks](https
 │   ├── realtime/            # Real-time messaging Block demo
 │   ├── storage/             # File storage Block demo
 │   └── background-jobs/     # Background jobs Block demo
-├── comparison/              # Side-by-side: raw CDK/Lambda vs AWS Blocks
+├── reference-implementation/  # Side-by-side: raw CDK/Lambda vs AWS Blocks
 ├── infra/                   # Any CDK escape-hatch overrides
 │   ├── bin/                 # CDK app entry point
 │   └── lib/                 # Stacks and constructs
@@ -76,7 +76,7 @@ This project is a **demonstration and awareness showcase** of [AWS Blocks](https
 └── .kiro/                   # Kiro steering and specs
 ```
 
-**Structure intent**: Each demo in `blocks/` should be self-contained and runnable independently. The `comparison/` folder exists specifically to show the before/after contrast for the target audience.
+**Structure intent**: Each demo in `blocks/` should be self-contained and runnable independently. The `reference-implementation/` folder exists specifically to show the before/after contrast for the target audience.
 
 ---
 
@@ -104,7 +104,7 @@ This project is a **demonstration and awareness showcase** of [AWS Blocks](https
 
 - Type-narrow all caught errors before use: `if (error instanceof Error) { ... }`
 - Never silently swallow errors — log before re-throwing or returning a typed error response
-- Lambda handlers (used in comparison demos) must return structured HTTP responses — never propagate unhandled rejections
+- Lambda handlers (used in reference implementation demos) must return structured HTTP responses — never propagate unhandled rejections
 - Pick one error strategy per module (typed throws **or** result objects) and stay consistent within it
 
 ---
@@ -133,8 +133,8 @@ This project is a **demonstration and awareness showcase** of [AWS Blocks](https
 - Pin exact versions in `package.json` — no `^` or `~` on production dependencies
 - Use `devDependencies` for all build-only and test-only packages
 - Prefer AWS-maintained packages (`@aws-blocks/*`, `@aws-sdk/*`, `@aws-lambda-powertools/*`)
-- For Lambda comparison demos: import only the specific AWS SDK v3 client needed — never the full `aws-sdk` v2
-- Minimize Lambda bundle size in comparison demos to keep the contrast fair
+- For Lambda reference implementation demos: import only the specific AWS SDK v3 client needed — never the full `aws-sdk` v2
+- Minimize Lambda bundle size in reference implementation demos to keep the contrast fair
 
 ---
 

@@ -37,7 +37,7 @@ This table is the core reference for every demo. Each scenario should make the t
 
 ## Demo Scenarios
 
-Each demo lives in `blocks/<scenario>/` and must be independently runnable. Every scenario is paired with a `comparison/` equivalent showing the raw CDK/Lambda approach for direct contrast.
+Each demo lives in `blocks/<scenario>/` and must be independently runnable. Every scenario is paired with a `reference-implementation/` equivalent showing the raw CDK/Lambda approach for direct contrast.
 
 | Scenario | Block Used | Replaces |
 |---|---|---|
@@ -81,43 +81,43 @@ Each demo lives in `blocks/<scenario>/` and must be independently runnable. Ever
 
 ```
 .
-├── blocks/                    # One subfolder per AWS Blocks demo scenario
-│   ├── auth/                  # Authentication Block demo
-│   ├── data/                  # Data persistence Block demo
-│   ├── api/                   # Type-safe API Block demo
-│   ├── realtime/              # Real-time messaging Block demo
-│   ├── storage/               # File storage Block demo
-│   └── background-jobs/       # Background jobs Block demo
-├── comparison/                # Side-by-side: raw CDK/Lambda vs AWS Blocks
-│   ├── auth/                  # Cognito + Lambda authorizer (current approach)
-│   ├── data/                  # DynamoDB + SDK (current approach)
-│   └── api/                   # API Gateway + CDK (current approach)
-├── infra/                     # CDK escape-hatch overrides only
-│   ├── bin/                   # CDK app entry point
-│   └── lib/                   # Custom stacks/constructs not covered by Blocks
+├── blocks/                         # One subfolder per AWS Blocks demo scenario
+│   ├── auth/                       # Authentication Block demo
+│   ├── data/                       # Data persistence Block demo
+│   ├── api/                        # Type-safe API Block demo
+│   ├── realtime/                   # Real-time messaging Block demo
+│   ├── storage/                    # File storage Block demo
+│   └── background-jobs/            # Background jobs Block demo
+├── reference-implementation/       # Side-by-side: raw CDK/Lambda vs AWS Blocks
+│   ├── auth/                       # Cognito + Lambda authorizer (current approach)
+│   ├── data/                       # DynamoDB + SDK (current approach)
+│   └── api/                        # API Gateway + CDK (current approach)
+├── infra/                          # CDK escape-hatch overrides only
+│   ├── bin/                        # CDK app entry point
+│   └── lib/                        # Custom stacks/constructs not covered by Blocks
 ├── shared/
-│   ├── models/                # Shared TypeScript types and interfaces
-│   └── utils/                 # Pure, reusable helpers
-├── test/                      # Tests mirroring blocks/ structure
-└── scripts/                   # Setup, demo runner, and teardown scripts
+│   ├── models/                     # Shared TypeScript types and interfaces
+│   └── utils/                      # Pure, reusable helpers
+├── test/                           # Tests mirroring blocks/ structure
+└── scripts/                        # Setup, demo runner, and teardown scripts
 ```
 
 ---
 
-## Comparison Demo Design Rules
+## Reference Implementation Design Rules
 
-The `comparison/` folder is as important as `blocks/` — it is what makes the value proposition legible to the audience.
+The `reference-implementation/` folder is as important as `blocks/` — it is what makes the value proposition legible to the audience.
 
-- Each comparison demo must be functionally equivalent to its Blocks counterpart — same feature, different implementation
+- Each reference implementation must be functionally equivalent to its Blocks counterpart — same feature, different implementation
 - Highlight lines of code, number of files, and manual steps required — these are the productivity metrics the audience cares about
-- Include a `README.md` in each comparison scenario with a side-by-side summary table: lines of code, files created, AWS services manually configured, local dev complexity
-- Do not make the comparison demos intentionally poor — write them as a competent developer on the current stack would
+- Include a `README.md` in each reference implementation scenario with a side-by-side summary table: lines of code, files created, AWS services manually configured, local dev complexity
+- Do not make the reference implementations intentionally poor — write them as a competent developer on the current stack would
 
 ---
 
 ## Observability (POC Level)
 
-- Use `@aws-lambda-powertools/logger` in comparison demos where Lambda is involved
+- Use `@aws-lambda-powertools/logger` in reference implementation demos where Lambda is involved
 - AWS Blocks manages its own observability for Block-managed compute — do not add separate CloudWatch config for Block internals
 - X-Ray tracing via CDK escape hatch only if explicitly needed for a demo point
 - Follow `poc-cost-guardrails.md` for log retention (1 day) and alarm restrictions

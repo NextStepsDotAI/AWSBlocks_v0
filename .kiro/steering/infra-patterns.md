@@ -9,7 +9,7 @@ inclusion: always
 In this project, AWS CDK is used in two distinct roles:
 
 1. **Escape hatch** — overriding or extending Block-managed infrastructure when Block defaults are insufficient for a demo point. This code lives in `infra/lib/`.
-2. **Comparison demos** — the `comparison/` folder uses raw CDK to replicate the team's current approach. This code is intentionally verbose to make the contrast with AWS Blocks visible.
+2. **Reference implementation** — the `reference-implementation/` folder uses raw CDK to replicate the team's current approach. This code is intentionally verbose to make the contrast with AWS Blocks visible.
 
 Apply the patterns in this document to both roles. CDK is never used to re-implement something a Block already handles.
 
@@ -40,7 +40,7 @@ A Block constructor runs inside a CDK `Stack` context — CDK is still the deplo
 
 Guardrails like concurrency limits, log retention, and tagging still apply to Block-managed resources — but you apply them through the **Block's configuration API**, not by writing raw CDK constructs alongside the Block.
 
-| Guardrail | CDK-managed resource (escape hatch / comparison) | Block-managed resource |
+| Guardrail | CDK-managed resource (escape hatch / reference implementation) | Block-managed resource |
 |---|---|---|
 | Reserved concurrency | `lambda.Function({ reservedConcurrentExecutions: 5 })` | Block constructor option (if exposed) or CDK escape hatch on the Block's underlying function |
 | Log retention | `logRetention: logs.RetentionDays.ONE_DAY` | Block constructor option or post-Block CDK customisation via `block.node.findChild()` |
@@ -59,8 +59,8 @@ Guardrails like concurrency limits, log retention, and tagging still apply to Bl
 | DynamoDB table (via Data Block) | AWS Blocks (CDK under the hood) | Block constructor options → fallback to `node.findChild()` escape hatch |
 | Cognito User Pool (via Auth Block) | AWS Blocks (CDK under the hood) | Block constructor options → fallback to `node.findChild()` escape hatch |
 | API Gateway (via API Block) | AWS Blocks (CDK under the hood) | Block constructor options → fallback to `node.findChild()` escape hatch |
-| Lambda (in comparison/ demos) | You — raw CDK | All CDK patterns in this document apply directly |
-| DynamoDB (in comparison/ demos) | You — raw CDK | All CDK patterns in this document apply directly |
+| Lambda (in reference-implementation/ demos) | You — raw CDK | All CDK patterns in this document apply directly |
+| DynamoDB (in reference-implementation/ demos) | You — raw CDK | All CDK patterns in this document apply directly |
 | Any resource in infra/lib/ | You — raw CDK escape hatch | All CDK patterns in this document apply directly |
 | Stack-level tags | You — `cdk.Tags.of(this)` | Applies to all resources in the stack, including Block-provisioned ones |
 
@@ -107,10 +107,10 @@ export class UserServiceStack extends cdk.Stack {
 }
 ```
 
-**Comparison stacks** (in `comparison/`) are intentionally explicit — they should represent how the team currently builds, not a simplified version:
+**Reference implementation stacks** (in `reference-implementation/`) are intentionally explicit — they should represent how the team currently builds, not a simplified version:
 
 ```typescript
-export class ComparisonUserServiceStack extends cdk.Stack {
+export class ReferenceUserServiceStack extends cdk.Stack {
   // Deliberately verbose: shows full CDK config a team member would write today
   // This is the "before" in the AWS Blocks before/after contrast
 }

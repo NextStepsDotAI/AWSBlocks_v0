@@ -20,7 +20,7 @@ This document defines how to build, test, lint, and deploy the project. When ver
 | Run all tests | `npm test` |
 | Run tests (single run, no watch) | `npm test -- --runInBand` |
 | Run tests with coverage | `npm run test:coverage` |
-| CDK synth (escape hatch / comparison stacks) | `npm run cdk:synth` |
+| CDK synth (escape hatch / reference implementation stacks) | `npm run cdk:synth` |
 | CDK diff | `npm run cdk:diff` |
 | CDK deploy | `npm run cdk:deploy -- --context env=dev` |
 | Destroy POC stacks | `npm run cdk:destroy -- --context env=dev` |
@@ -32,8 +32,8 @@ This document defines how to build, test, lint, and deploy the project. When ver
   "scripts": {
     "dev": "blocks dev",
     "build": "tsc --project tsconfig.json",
-    "lint": "eslint 'blocks/**/*.ts' 'comparison/**/*.ts' 'infra/**/*.ts' 'shared/**/*.ts' 'test/**/*.ts'",
-    "lint:fix": "eslint 'blocks/**/*.ts' 'comparison/**/*.ts' 'infra/**/*.ts' 'shared/**/*.ts' 'test/**/*.ts' --fix",
+    "lint": "eslint 'blocks/**/*.ts' 'reference-implementation/**/*.ts' 'infra/**/*.ts' 'shared/**/*.ts' 'test/**/*.ts'",
+    "lint:fix": "eslint 'blocks/**/*.ts' 'reference-implementation/**/*.ts' 'infra/**/*.ts' 'shared/**/*.ts' 'test/**/*.ts' --fix",
     "test": "jest --runInBand",
     "test:coverage": "jest --runInBand --coverage",
     "audit": "npm audit --audit-level=high",
@@ -66,18 +66,18 @@ Two tsconfig files are required:
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["blocks", "comparison", "infra", "shared"],
+  "include": ["blocks", "reference-implementation", "infra", "shared"],
   "exclude": ["node_modules", "dist", "test", ".kiro"]
 }
 ```
 
-Note: there is no `src/` directory in this project. Source files live in `blocks/`, `comparison/`, `infra/`, and `shared/`. Never add a `rootDir` constraint — the multi-folder layout makes a single `rootDir` impractical.
+Note: there is no `src/` directory in this project. Source files live in `blocks/`, `reference-implementation/`, `infra/`, and `shared/`. Never add a `rootDir` constraint — the multi-folder layout makes a single `rootDir` impractical.
 
 **`tsconfig.test.json`** — extends base, adds test files:
 ```json
 {
   "extends": "./tsconfig.json",
-  "include": ["blocks", "comparison", "infra", "shared", "test"],
+  "include": ["blocks", "reference-implementation", "infra", "shared", "test"],
   "exclude": ["node_modules", "dist", ".kiro"]
 }
 ```
@@ -93,10 +93,10 @@ Use ESLint with the TypeScript plugin. Required rules:
 ## Testing
 
 - Framework: **Jest** with `ts-jest`
-- Test files: `test/**/*.test.ts`, mirroring `blocks/` and `comparison/` structure
+- Test files: `test/**/*.test.ts`, mirroring `blocks/` and `reference-implementation/` structure
 - Block-level tests must not make real AWS calls — mock at the Block boundary
-- Comparison demo tests must not make real AWS calls — mock at the repository/SDK boundary
-- CDK stack tests (for escape hatch and comparison stacks) use `aws-cdk-lib/assertions`
+- Reference implementation tests must not make real AWS calls — mock at the repository/SDK boundary
+- CDK stack tests (for escape hatch and reference implementation stacks) use `aws-cdk-lib/assertions`
 - Shared utilities in `shared/utils/` must have ≥ 80% line coverage — these are the only modules with a hard coverage requirement in a POC
 
 ### Test Coverage Guardrails
@@ -134,7 +134,7 @@ Coverage is a ratchet — it only moves up, never down. Apply these rules withou
 
 **Adding new source code requires new tests.**
 - Every new function or method in `shared/utils/` must have at least one corresponding test
-- New Lambda handlers in `comparison/` must have at least: one happy-path test, one validation-failure test, and one error-handling test
+- New Lambda handlers in `reference-implementation/` must have at least: one happy-path test, one validation-failure test, and one error-handling test
 - CDK stacks must have at least one `aws-cdk-lib/assertions` snapshot or fine-grained assertion test
 
 ## CDK Workflow
