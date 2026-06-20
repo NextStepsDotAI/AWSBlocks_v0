@@ -49,7 +49,7 @@ This document defines how to build, test, lint, and deploy the project. When ver
 
 Two tsconfig files are required:
 
-**`tsconfig.json`** — production source compilation:
+**`tsconfig.json`** — production source compilation covering all project source folders:
 ```json
 {
   "compilerOptions": {
@@ -57,7 +57,6 @@ Two tsconfig files are required:
     "module": "commonjs",
     "lib": ["ES2022"],
     "outDir": "dist",
-    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -67,19 +66,19 @@ Two tsconfig files are required:
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "test"]
+  "include": ["blocks", "comparison", "infra", "shared"],
+  "exclude": ["node_modules", "dist", "test", ".kiro"]
 }
 ```
 
-**`tsconfig.test.json`** — extends base, includes test files:
+Note: there is no `src/` directory in this project. Source files live in `blocks/`, `comparison/`, `infra/`, and `shared/`. Never add a `rootDir` constraint — the multi-folder layout makes a single `rootDir` impractical.
+
+**`tsconfig.test.json`** — extends base, adds test files:
 ```json
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "."
-  },
-  "include": ["src", "test", "infra"]
+  "include": ["blocks", "comparison", "infra", "shared", "test"],
+  "exclude": ["node_modules", "dist", ".kiro"]
 }
 ```
 
@@ -118,7 +117,7 @@ Coverage is a ratchet — it only moves up, never down. Apply these rules withou
   ```
 
 **Coverage must not decrease.**
-- Before committing changes to `src/`, run `npm run test:coverage` and confirm the coverage report shows no regression
+- Before committing changes to `blocks/` or `shared/`, run `npm run test:coverage` and confirm the coverage report shows no regression
 - If a PR reduces line coverage below the current baseline, it must not be merged until tests are added to compensate
 - Coverage thresholds enforced in `jest.config.ts`:
   ```typescript
@@ -134,8 +133,8 @@ Coverage is a ratchet — it only moves up, never down. Apply these rules withou
   ```
 
 **Adding new source code requires new tests.**
-- Every new function or method in `src/services/` and `src/repositories/` must have at least one corresponding test
-- New Lambda handlers must have at least: one happy-path test, one validation-failure test, and one error-handling test
+- Every new function or method in `shared/utils/` must have at least one corresponding test
+- New Lambda handlers in `comparison/` must have at least: one happy-path test, one validation-failure test, and one error-handling test
 - CDK stacks must have at least one `aws-cdk-lib/assertions` snapshot or fine-grained assertion test
 
 ## CDK Workflow

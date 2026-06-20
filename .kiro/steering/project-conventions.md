@@ -143,5 +143,5 @@ This project is a **demonstration and awareness showcase** of [AWS Blocks](https
 - Use CDK escape hatch only when a Block's default configuration is genuinely insufficient for the demo point being made
 - One stack per deployment boundary; keep stacks focused
 - No hardcoded ARNs, account IDs, or region strings — use CDK context or environment variables
-- Tag all resources with at minimum: `Project: AWSBlocksDemo`, `Environment`, and `Owner`
+- Tag all resources with at minimum: `Project: aws-blocks-demo`, `Environment`, and `Owner`
 - Use `RemovalPolicy.DESTROY` for demo stacks (these are not production resources)

@@ -13,7 +13,56 @@ In this project, AWS CDK is used in two distinct roles:
 
 Apply the patterns in this document to both roles. CDK is never used to re-implement something a Block already handles.
 
-## CDK Version & Imports
+## Resource Ownership: Blocks vs CDK
+
+### Mental Model
+
+AWS CDK and AWS Blocks manage resources from **different abstraction levels** — they are not alternatives to each other, they are complementary layers:
+
+- **AWS CDK** is IaC — you declare infrastructure resources (Lambda functions, DynamoDB tables, SQS queues) explicitly as code. You are responsible for wiring, permissions, and configuration.
+
+- **AWS Blocks** operate one level higher — each Block is an application-level component (a typed API for auth, data, messaging, etc.) that **internally provisions its own CDK infrastructure**. You configure the Block via its constructor options; it handles the underlying CDK resources for you.
+
+Think of it this way:
+```
+Traditional approach (two separate concerns):
+  CDK stack  →  provisions DynamoDB table, Lambda, API Gateway  (IaC)
+  App code   →  calls DynamoDB SDK, writes Lambda handler        (application)
+
+AWS Blocks approach (one abstraction, both layers):
+  Block constructor  →  provisions the infrastructure AND exposes typed app APIs
+  App code           →  calls Block methods, never the underlying SDK directly
+```
+
+A Block constructor runs inside a CDK `Stack` context — CDK is still the deployment engine underneath. But you never write the infrastructure definition separately; the Block encapsulates it.
+
+### What This Means for Guardrails
+
+Guardrails like concurrency limits, log retention, and tagging still apply to Block-managed resources — but you apply them through the **Block's configuration API**, not by writing raw CDK constructs alongside the Block.
+
+| Guardrail | CDK-managed resource (escape hatch / comparison) | Block-managed resource |
+|---|---|---|
+| Reserved concurrency | `lambda.Function({ reservedConcurrentExecutions: 5 })` | Block constructor option (if exposed) or CDK escape hatch on the Block's underlying function |
+| Log retention | `logRetention: logs.RetentionDays.ONE_DAY` | Block constructor option or post-Block CDK customisation via `block.node.findChild()` |
+| Resource tagging | `cdk.Tags.of(stack).add(...)` — propagates to all children including Block resources | Same — apply `cdk.Tags.of(this)` at the stack level; tags propagate into Block-provisioned resources automatically |
+| IAM least privilege | Explicit `PolicyStatement` or CDK grant methods | Block handles permissions internally; add additional restrictions via stack-level SCPs or by passing a custom role to the Block if supported |
+
+**Key rule**: Tags applied at the CDK stack level (`cdk.Tags.of(this).add(...)`) **do propagate** into Block-provisioned resources because Blocks use CDK constructs under the hood. Tagging at the stack level is therefore the correct and sufficient approach for both CDK-managed and Block-managed resources within the same stack.
+
+**For concurrency and log retention on Block-managed resources**: check the Block's constructor options first. If the Block does not expose the setting, use `block.node.findChild('ResourceLogicalId')` to locate the underlying CDK construct and apply the configuration directly — document this as a CDK escape hatch with a comment explaining why.
+
+### Resource Classification Reference
+
+| Resource | Who Provisions It | Where to Configure Guardrails |
+|---|---|---|
+| Lambda (via Data/Auth/API Block) | AWS Blocks (CDK under the hood) | Block constructor options → fallback to `node.findChild()` escape hatch |
+| DynamoDB table (via Data Block) | AWS Blocks (CDK under the hood) | Block constructor options → fallback to `node.findChild()` escape hatch |
+| Cognito User Pool (via Auth Block) | AWS Blocks (CDK under the hood) | Block constructor options → fallback to `node.findChild()` escape hatch |
+| API Gateway (via API Block) | AWS Blocks (CDK under the hood) | Block constructor options → fallback to `node.findChild()` escape hatch |
+| Lambda (in comparison/ demos) | You — raw CDK | All CDK patterns in this document apply directly |
+| DynamoDB (in comparison/ demos) | You — raw CDK | All CDK patterns in this document apply directly |
+| Any resource in infra/lib/ | You — raw CDK escape hatch | All CDK patterns in this document apply directly |
+| Stack-level tags | You — `cdk.Tags.of(this)` | Applies to all resources in the stack, including Block-provisioned ones |
 
 - Use **AWS CDK v2** — single package `aws-cdk-lib`; never import from individual `@aws-cdk/*` packages
 - Import pattern:
@@ -88,16 +137,16 @@ Tagging is mandatory for all AWS resources. Tags enable cost allocation, access 
 
 ### Mandatory Tags
 
-Every stack must apply all of the following tags:
+Every CDK-managed stack must apply all of the following tags. Tag values follow the format specified in the table — do not invent new formats:
 
-| Tag Key | Description | Example Values |
+| Tag Key | Description | Required Value / Format |
 |---|---|---|
-| `Project` | Project or product name | `AWSBlocks` |
-| `Environment` | Deployment environment | `dev`, `staging`, `prod` |
-| `Service` | Microservice name within the project | `user-service`, `order-service` |
-| `Owner` | Team or individual responsible | `platform-team`, `jane.doe` |
-| `ManagedBy` | How the resource was provisioned | `CDK` (always this value) |
-| `CostCenter` | Billing/cost allocation code | `cc-1234` |
+| `Project` | Project identifier | `aws-blocks-demo` (fixed, always this value) |
+| `Environment` | Deployment environment | `dev`, `staging`, or `prod` (lowercase, no other values) |
+| `Service` | Demo or service name within the project | `kebab-case` e.g. `auth-comparison`, `data-block-demo` |
+| `Owner` | Team or individual responsible | `kebab-case` or `dot.notation` e.g. `platform-team`, `jane.doe` |
+| `ManagedBy` | How the resource was provisioned | `cdk` (fixed, always this value, lowercase) |
+| `CostCenter` | Billing/cost allocation code | As assigned e.g. `cc-1234` |
 
 ### Enforcement Pattern
 
@@ -109,11 +158,11 @@ export class UserServiceStack extends cdk.Stack {
     super(scope, id, props);
 
     // Apply mandatory tags immediately — must come before resource definitions
-    cdk.Tags.of(this).add('Project', 'AWSBlocks');
+    cdk.Tags.of(this).add('Project', 'aws-blocks-demo');
     cdk.Tags.of(this).add('Environment', props.environment);
     cdk.Tags.of(this).add('Service', props.serviceName);
     cdk.Tags.of(this).add('Owner', props.owner);
-    cdk.Tags.of(this).add('ManagedBy', 'CDK');
+    cdk.Tags.of(this).add('ManagedBy', 'cdk');
     cdk.Tags.of(this).add('CostCenter', props.costCenter);
 
     // Resource definitions follow...
@@ -148,10 +197,11 @@ cdk.Tags.of(handler).add('Trigger', 'api-gateway');
 
 ### Rules
 
-- Never create a stack without applying all mandatory tags
-- Tag values must be lowercase kebab-case or dot-notation — no spaces or special characters
-- `Environment` values are strictly `dev`, `staging`, or `prod` — no other values
-- `ManagedBy` is always `CDK` — never change this value manually
+- Never create a CDK-managed stack without applying all mandatory tags
+- Tag key names are PascalCase (e.g. `Project`, `Environment`) — tag values follow the format in the table above
+- `Project` is always `aws-blocks-demo` — never use `AWSBlocks`, `AWSBlocksDemo`, or any other variant
+- `ManagedBy` is always `cdk` (lowercase) — never change this value
+- `Environment` is strictly `dev`, `staging`, or `prod` — no other values
 - Do not apply tags inline on individual `cdk.StackProps` — use `cdk.Tags.of()` for consistency
 
 ## Lambda Construct Pattern
@@ -347,15 +397,18 @@ new budgets.CfnBudget(this, 'PocBudget', {
 ### Access Control Guardrails
 
 - POC Lambda functions must never have internet egress unless explicitly required — use VPC endpoint or keep functions outside VPC with explicit security group rules
-- IAM roles must include a `Condition` block limiting invocation to the specific AWS account:
+- IAM roles must be scoped to the specific AWS account. Add a deny policy to prevent any role from being assumed or used outside the POC account:
   ```typescript
   new iam.PolicyStatement({
     effect: iam.Effect.DENY,
     actions: ['*'],
     resources: ['*'],
-    conditions: { StringNotEquals: { 'aws:RequestedRegion': 'us-east-1' } },
+    conditions: {
+      StringNotEquals: { 'aws:PrincipalAccount': this.account }, // restrict to this account only
+    },
   });
   ```
+- For region restriction (preventing resource creation in unintended regions), use a separate SCP or permission boundary — do not conflate account restriction with region restriction in the same policy statement
 - Never enable public S3 bucket access — all buckets must have `blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL`
 - API Gateway endpoints in `dev` must require an API key or IAM auth — never leave them fully open
 
